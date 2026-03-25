@@ -215,11 +215,11 @@ def grid_lbl(t):
 def main():
     col_t, col_r = st.columns([7,1])
     with col_t:
-        st.markdown("## 📊 Palantir (PLTR) 財務モデル シミュレーター")
+        st.title("Palantir (PLTR) 財務モデル シミュレーター")
         st.caption("FY2024 実績ベース | FY2025–FY2030 予測 | 単位: USD Million")
     with col_r:
         st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("↺ リセット", type="secondary"):
+        if st.button("リセット", type="secondary"):
             for k in list(st.session_state.keys()): del st.session_state[k]
             st.rerun()
 
