@@ -16,7 +16,7 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-.block-container { padding-top: 1rem; padding-bottom: 1rem; }
+.block-container { padding-top: 3rem; padding-bottom: 1rem; }
 
 /* セクションヘッダー */
 .sec-hdr {
@@ -215,7 +215,7 @@ def grid_lbl(t):
 def main():
     col_t, col_r = st.columns([7,1])
     with col_t:
-        st.title("Palantir (PLTR) 財務モデル シミュレーター")
+        st.title("📊 Palantir (PLTR) 財務モデル シミュレーター")
         st.caption("FY2024 実績ベース | FY2025–FY2030 予測 | 単位: USD Million")
     with col_r:
         st.markdown("<br>", unsafe_allow_html=True)
