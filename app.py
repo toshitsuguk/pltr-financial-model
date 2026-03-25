@@ -227,7 +227,7 @@ def main():
                for c in ["Bear","Base","Bull"]}
 
     # ══════════════════════════════════════════════════════════════════════════
-    sec("📐 A. パラメータ入力（セルを直接編集 → 即時再計算）")
+    sec("A. パラメータ入力（セルを直接編集 → 即時再計算）")
 
     # A-1 収益成長率（全幅）
     grid_lbl("A-1｜収益成長率 (%)")
@@ -287,7 +287,7 @@ def main():
     vp     = {sc: ev_price(model, sc, val_df.loc[sc,"EV/Rev (x)"], nc, sh) for sc in ["Bear","Base","Bull"]}
 
     # ══════════════════════════════════════════════════════════════════════════
-    sec("📌 B. FY2030 サマリー")
+    sec("B. FY2030 サマリー")
 
     ks = st.columns(6)
     kpis = [
@@ -306,7 +306,7 @@ def main():
                 unsafe_allow_html=True)
 
     # ══════════════════════════════════════════════════════════════════════════
-    sec("📈 C. 収益予測")
+    sec("C. 収益予測")
 
     c1, c2 = st.columns(2)
     with c1: st.plotly_chart(fig_rev(model), use_container_width=True)
@@ -333,7 +333,7 @@ def main():
         use_container_width=True, height=255)
 
     # ══════════════════════════════════════════════════════════════════════════
-    sec("💰 D. 利益構造（Base シナリオ）")
+    sec("D. 利益構造（Base シナリオ）")
 
     c1, c2 = st.columns([3,1])
     with c1: st.plotly_chart(fig_margins(model), use_container_width=True)
@@ -361,7 +361,7 @@ def main():
         use_container_width=True, height=255)
 
     # ══════════════════════════════════════════════════════════════════════════
-    sec("🎯 E. バリュエーション")
+    sec("E. バリュエーション")
 
     c1, c2, c3 = st.columns([2,2,2])
 
