@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ARR Simulation — B2B SaaS (ENT / MID / SB)</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Arial', sans-serif; font-size: 11px;
+      background: #d9d9d9; color: #000;
+      height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+    }
+
+    /* ── Title bar ───────────────────────────── */
+    .title-bar {
+      background: #1f3864; color: #fff;
+      padding: 6px 14px; display: flex; align-items: center;
+      justify-content: space-between; flex-shrink: 0;
+      border-bottom: 2px solid #000;
+    }
+    .title-bar .t-title { font-size: 13px; font-weight: 700; }
+    .title-bar .t-sub   { font-size: 10px; color: #99b4d9; margin-top: 1px; }
+    .title-bar .t-stamp { font-size: 10px; color: #7f9bc4; }
+
+    /* ── Main layout ─────────────────────────── */
+    .main { display: flex; flex: 1; overflow: hidden; }
+
+    /* ── Left panel ──────────────────────────── */
+    .left-panel {
+      width: 360px; flex-shrink: 0;
+      background: #fff; border-right: 2px solid #1f3864;
+      overflow-y: auto; display: flex; flex-direction: column;
+    }
+    .sec-hdr {
+      background: #1f3864; color: #fff; font-weight: 700;
+      font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px;
+      padding: 4px 8px; border-top: 2px solid #000; flex-shrink: 0;
+    }
+    .subsec-hdr {
+      background: #d6dff5; color: #1f3864; font-weight: 700;
+      font-size: 10px; padding: 3px 10px; border-bottom: 1px solid #b0bde0;
+      flex-shrink: 0;
+    }
+    .inp-row {
+      display: flex; align-items: center;
+      border-bottom: 1px solid #ebebeb; min-height: 24px; flex-shrink: 0;
+    }
+    .inp-row .lbl  { flex: 1; padding: 3px 8px; color: #333; font-size: 11px; line-height: 1.3; }
+    .inp-row .unit { color: #888; font-size: 10px; padding-right: 4px; flex-shrink: 0; }
+    .inp-row input[type=number], .inp-row select {
+      width: 76px; background: #ffffcc; border: 1px solid #c8c89a;
+      color: #0000ff; font-weight: 700; font-size: 11px;
+      font-family: Arial; text-align: right; padding: 2px 5px; flex-shrink: 0;
+    }
+    .inp-row input[type=number]:focus, .inp-row select:focus {
+      outline: 2px solid #1f3864; outline-offset: -2px;
+    }
+    .inp-row .derived {
+      width: 76px; background: #f0f0f0; color: #000;
+      font-size: 11px; text-align: right; padding: 2px 5px;
+      font-family: Arial; flex-shrink: 0; border-left: 1px solid #d0d0d0;
+    }
+
+    /* ── Segment tabs ────────────────────────── */
+    .seg-tabs {
+      display: flex; flex-shrink: 0;
+      border-top: 2px solid #000; border-bottom: 2px solid #1f3864;
+    }
+    .seg-tab-btn {
+      flex: 1; padding: 7px 4px;
+      border: none; border-right: 1px solid #b0bde0;
+      cursor: pointer; font-size: 11px; font-weight: 700; letter-spacing: 0.8px;
+      background: #e8edf5; color: #555; transition: background 0.1s;
+    }
+    .seg-tab-btn:last-child { border-right: none; }
+    .seg-tab-btn[data-seg="ent"].active { background: #1f3864; color: #fff; }
+    .seg-tab-btn[data-seg="mid"].active { background: #4472c4; color: #fff; }
+    .seg-tab-btn[data-seg="sb"].active  { background: #70ad47; color: #fff; }
+
+    /* Segment panels: hidden by default, flex column when active */
+    .seg-panel { display: none; flex-direction: column; }
+    .seg-panel.active { display: flex; }
+
+    /* ── Ramp table ──────────────────────────── */
+    .ramp-wrap { padding: 6px 8px; flex-shrink: 0; }
+    .ramp-table { width: 100%; border-collapse: collapse; }
+    .ramp-table td, .ramp-table th {
+      border: 1px solid #d0d0d0; padding: 2px 6px; font-size: 11px;
+    }
+    .ramp-table th { background: #f2f2f2; font-weight: 700; text-align: center; }
+    .ramp-table td.ramp-month { text-align: center; color: #555; width: 70px; }
+    .ramp-table td.ramp-val { background: #ffffcc; padding: 1px 3px; }
+    .ramp-table td.ramp-val input {
+      width: 100%; background: transparent; border: none; outline: none;
+      text-align: right; color: #0000ff; font-weight: 700;
+      font-size: 11px; font-family: Arial;
+    }
+    .ramp-table tr.ramp-fixed td {
+      background: #f7f7f7; color: #888; font-size: 10px; text-align: center;
+    }
+
+    /* ── Grid tables ─────────────────────────── */
+    .grid-wrap { overflow-x: auto; padding: 6px 8px; flex-shrink: 0; }
+    .grid-table { border-collapse: collapse; white-space: nowrap; }
+    .grid-table th, .grid-table td {
+      border: 1px solid #d0d0d0; padding: 2px 3px;
+      font-size: 10px; text-align: center;
+    }
+    .grid-table th { background: #f2f2f2; font-weight: 700; }
+    .grid-table td.inp-cell { background: #ffffcc; padding: 0; width: 52px; }
+    .grid-table td.inp-cell input {
+      width: 100%; background: #ffffcc; border: none; outline: none;
+      text-align: right; color: #0000ff; -webkit-text-fill-color: #0000ff;
+      font-weight: 700; font-size: 10px; font-family: Arial;
+      padding: 2px 3px; display: block;
+    }
+    .grid-table td.inp-cell input::-webkit-outer-spin-button,
+    .grid-table td.inp-cell input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    .grid-table td.inp-cell input[type=number] { -moz-appearance: textfield; }
+
+    /* ── Right panel ─────────────────────────── */
+    .right-panel {
+      flex: 1; min-width: 0;
+      overflow-y: auto; overflow-x: hidden;
+      background: #f0f0f0;
+      display: flex; flex-direction: column; gap: 8px; padding: 8px;
+    }
+    /* KPI strips */
+    .kpi-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+    .kpi { background: #fff; border: 1px solid #d0d0d0; padding: 7px 10px; }
+    .kpi .kl { font-size: 9px; color: #666; text-transform: uppercase; letter-spacing: 0.3px; }
+    .kpi .kv { font-size: 17px; font-weight: 700; color: #1f3864; margin-top: 2px; font-family: Arial; }
+    .kpi .ks { font-size: 9px; color: #999; }
+    .kpi.kpi-pct .kv { color: #006400; }
+    .kpi.kpi-warn .kv { color: #cc3300; }
+    /* Segment-colored KPI accent borders */
+    .kpi-ent { border-left: 3px solid #1f3864 !important; }
+    .kpi-mid { border-left: 3px solid #4472c4 !important; }
+    .kpi-sb  { border-left: 3px solid #70ad47 !important; }
+
+    /* Charts */
+    .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .chart-box { background: #fff; border: 1px solid #d0d0d0; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+    .chart-box-hdr {
+      background: #1f3864; color: #fff; font-weight: 700;
+      font-size: 10px; text-transform: uppercase; letter-spacing: 0.4px; padding: 4px 10px;
+    }
+    .chart-box canvas { padding: 10px; }
+
+    /* Table box */
+    .tbl-box { background: #fff; border: 1px solid #d0d0d0; box-shadow: 0 1px 3px rgba(0,0,0,.1); min-width: 0; }
+    .tbl-box-hdr {
+      background: #1f3864; color: #fff; font-weight: 700;
+      font-size: 10px; text-transform: uppercase; letter-spacing: 0.4px;
+      padding: 4px 10px; display: flex; align-items: center; justify-content: space-between;
+      gap: 8px;
+    }
+    /* View tab buttons inside tbl-box-hdr */
+    .view-tab-btn {
+      padding: 2px 9px; border: 1px solid #7f9bc4;
+      background: transparent; color: #99b4d9;
+      cursor: pointer; font-size: 9px; font-weight: 700; letter-spacing: 0.5px;
+      border-radius: 2px; flex-shrink: 0;
+    }
+    .view-tab-btn.active             { background: #fff; color: #1f3864; border-color: #fff; }
+    .view-tab-btn[data-view="ent"].active { color: #1f3864; }
+    .view-tab-btn[data-view="mid"].active { color: #4472c4; }
+    .view-tab-btn[data-view="sb"].active  { color: #70ad47; }
+    .tbl-scroll { overflow-x: auto; max-height: 420px; overflow-y: auto; }
+
+    /* ── Transposed quarterly table ─────────── */
+    .data-table { border-collapse: collapse; white-space: nowrap; font-size: 11px; }
+    .data-table td.metric-cell, .data-table th.metric-th {
+      position: sticky; left: 0; z-index: 3;
+      min-width: 168px; max-width: 168px; text-align: left;
+    }
+    .data-table td.unit-cell, .data-table th.unit-th {
+      position: sticky; left: 168px; z-index: 3;
+      min-width: 52px; max-width: 52px; text-align: center;
+      border-right: 2px solid #9ec2de !important;
+    }
+    .hdr-fy th {
+      background: #1f3864; color: #fff; font-weight: 700; font-size: 10px;
+      text-align: center; padding: 3px 6px; border: 1px solid #2a4a80;
+      position: sticky; top: 0; z-index: 2;
+    }
+    .hdr-fy th.metric-th, .hdr-fy th.unit-th { z-index: 4; }
+    .hdr-q th {
+      background: #2a5298; color: #ccd9ff; font-size: 10px; font-weight: 700;
+      text-align: center; padding: 2px 6px; border: 1px solid #3360bb;
+      position: sticky; top: 25px; z-index: 2; min-width: 72px;
+    }
+    .hdr-q th.metric-th, .hdr-q th.unit-th { z-index: 4; background: #1f3864; color: #fff; }
+    .hdr-q th.q1-col { border-left: 2px solid #1f3864 !important; }
+    .data-table td { border: 1px solid #e0e0e0; padding: 2px 8px; text-align: right; font-family: Arial; }
+    .data-table td.metric-cell { background: #fff; font-weight: 600; color: #1f3864; padding-left: 8px; }
+    .data-table td.unit-cell   { background: #f2f2f2; color: #888; font-size: 10px; }
+    .data-table td.q1-col      { border-left: 2px solid #c0cce8 !important; }
+    .row-indent   td.metric-cell { font-weight: 400; color: #444; padding-left: 18px; font-size: 10px; }
+    .row-subtotal td { background: #dce6f1 !important; font-weight: 700; border-top: 1px solid #7096c8 !important; }
+    .row-subtotal td.metric-cell { background: #dce6f1 !important; }
+    .row-subtotal td.unit-cell   { background: #cdd9ee !important; }
+    .row-total    td { background: #1f3864 !important; color: #fff !important; font-weight: 700; border-top: 2px solid #000 !important; }
+    .row-total    td.metric-cell { background: #1f3864 !important; color: #fff !important; }
+    .row-total    td.unit-cell   { background: #1f3864 !important; color: #99b4d9 !important; }
+    .row-sec-hdr  td {
+      background: #1f3864 !important; color: #fff !important;
+      font-weight: 700; font-size: 10px; text-transform: uppercase;
+      letter-spacing: 0.4px; padding: 3px 8px; border-top: 2px solid #000 !important;
+    }
+    .row-spacer td { height: 6px; background: #eef1f8 !important; border: none !important; padding: 0; }
+    .pos { color: #006400; } .neg { color: #cc0000; }
+    .pct-good { color: #006400; font-weight: 600; }
+    .pct-warn { color: #cc3300; font-weight: 600; }
+
+    /* Footnote area */
+    .footnote {
+      padding: 6px 8px; background: #f9f9f9; border-top: 1px solid #e0e0e0;
+      flex-shrink: 0; font-size: 9px; color: #888; line-height: 1.7;
+    }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f0f0f0; }
+    ::-webkit-scrollbar-thumb { background: #b0b8c8; border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<div class="title-bar">
+  <div>
+    <div class="t-title">ARR Simulation &ensp;|&ensp; B2B SaaS Top-Line Model &ensp;|&ensp; ENT / MID / SB</div>
+    <div class="t-sub">セグメント別 月次ループ計算 — New / Expansion / Contraction ARR &ensp;|&ensp; 単位: 百万円</div>
+  </div>
+  <div class="t-stamp" id="stamp">—</div>
+</div>
+
+<div class="main">
+
+  <!-- ════════════════════════════════════════ -->
+  <!-- LEFT PANEL                               -->
+  <!-- ════════════════════════════════════════ -->
+  <div class="left-panel">
+
+    <!-- ① グローバル設定: 期間（3セグメント共通） -->
+    <div class="sec-hdr" style="border-top:none">① &ensp;期間設定（全セグメント共通）</div>
+    <div class="inp-row">
+      <span class="lbl">開始年</span><span class="unit">年</span>
+      <select id="startYear">
+        <option value="2024">2024</option>
+        <option value="2025" selected>2025</option>
+        <option value="2026">2026</option>
+      </select>
+    </div>
+    <div class="inp-row">
+      <span class="lbl">終了年</span><span class="unit">年</span>
+      <select id="endYear">
+        <option value="2027">2027</option>
+        <option value="2028">2028</option>
+        <option value="2029">2029</option>
+        <option value="2030" selected>2030</option>
+        <option value="2031">2031</option>
+        <option value="2032">2032</option>
+      </select>
+    </div>
+
+    <!-- ② セグメントタブ -->
+    <div class="seg-tabs">
+      <button class="seg-tab-btn active" data-seg="ent" onclick="switchSegTab('ent')">ENT</button>
+      <button class="seg-tab-btn"        data-seg="mid" onclick="switchSegTab('mid')">MID</button>
+      <button class="seg-tab-btn"        data-seg="sb"  onclick="switchSegTab('sb')">SB</button>
+    </div>
+
+    <!-- ③ セグメントごとの入力パネル（JSで生成・挿入） -->
+    <div id="seg-panel-ent" class="seg-panel active"></div>
+    <div id="seg-panel-mid" class="seg-panel"></div>
+    <div id="seg-panel-sb"  class="seg-panel"></div>
+
+    <!-- 凡例 -->
+    <div class="footnote">
+      ※ <span style="color:#0000ff;font-weight:700;">青文字</span> = 入力値 &nbsp;|&nbsp;
+      <span style="color:#000;">黒文字</span> = 計算値<br>
+      ※ Expansion 率 = YoY NRR^(1/12) − 1 + Contraction 率<br>
+      ※ 金額表示単位: 百万円 &nbsp;|&nbsp; 各セグメント合計 = Total
+    </div>
+
+  </div><!-- /left-panel -->
+
+  <!-- ════════════════════════════════════════ -->
+  <!-- RIGHT PANEL                              -->
+  <!-- ════════════════════════════════════════ -->
+  <div class="right-panel">
+
+    <!-- KPI 行1: Total サマリー -->
+    <div class="kpi-strip">
+      <div class="kpi">
+        <div class="kl">期末 Total ARR</div>
+        <div class="kv" id="kpi-end-arr">—</div>
+        <div class="ks" id="kpi-end-arr-sub">百万円</div>
+      </div>
+      <div class="kpi">
+        <div class="kl">累計 New ARR（Total）</div>
+        <div class="kv" id="kpi-new-arr">—</div>
+        <div class="ks">百万円 / 期間合計</div>
+      </div>
+      <div class="kpi">
+        <div class="kl">期末 実質稼働 HC（Total）</div>
+        <div class="kv" id="kpi-hc">—</div>
+        <div class="ks">最終月 全セグメント合計</div>
+      </div>
+      <div class="kpi">
+        <div class="kl">ARR CAGR（Total）</div>
+        <div class="kv" id="kpi-cagr">—</div>
+        <div class="ks" id="kpi-cagr-sub">期初→期末</div>
+      </div>
+    </div>
+
+    <!-- KPI 行2: セグメント別 期末ARR + Total NRR -->
+    <div class="kpi-strip">
+      <div class="kpi kpi-ent">
+        <div class="kl">ENT 期末 ARR</div>
+        <div class="kv" id="kpi-ent-arr" style="color:#1f3864">—</div>
+        <div class="ks" id="kpi-ent-share">百万円</div>
+      </div>
+      <div class="kpi kpi-mid">
+        <div class="kl">MID 期末 ARR</div>
+        <div class="kv" id="kpi-mid-arr" style="color:#4472c4">—</div>
+        <div class="ks" id="kpi-mid-share">百万円</div>
+      </div>
+      <div class="kpi kpi-sb">
+        <div class="kl">SB 期末 ARR</div>
+        <div class="kv" id="kpi-sb-arr" style="color:#70ad47">—</div>
+        <div class="ks" id="kpi-sb-share">百万円</div>
+      </div>
+      <div class="kpi kpi-pct">
+        <div class="kl">NRR（月次, 期末, Total）</div>
+        <div class="kv" id="kpi-nrr">—</div>
+        <div class="ks">(ARR + Exp − Cont) / ARR</div>
+      </div>
+    </div>
+
+    <!-- チャート -->
+    <div class="charts-row">
+      <div class="chart-box">
+        <div class="chart-box-hdr">Total ARR 推移（セグメント別積み上げ）</div>
+        <canvas id="chart-arr" height="180"></canvas>
+      </div>
+      <div class="chart-box">
+        <div class="chart-box-hdr">Net New ARR（セグメント別内訳）</div>
+        <canvas id="chart-netnew" height="180"></canvas>
+      </div>
+    </div>
+
+    <!-- データテーブル（ビュー切替付き） -->
+    <div class="tbl-box">
+      <div class="tbl-box-hdr">
+        <span>四半期サマリー</span>
+        <div style="display:flex;align-items:center;gap:5px">
+          <span style="font-size:9px;color:#99b4d9;font-weight:400;letter-spacing:0">表示:</span>
+          <button class="view-tab-btn active" data-view="total" onclick="switchTableView('total')">Total</button>
+          <button class="view-tab-btn"        data-view="ent"   onclick="switchTableView('ent')">ENT</button>
+          <button class="view-tab-btn"        data-view="mid"   onclick="switchTableView('mid')">MID</button>
+          <button class="view-tab-btn"        data-view="sb"    onclick="switchTableView('sb')">SB</button>
+        </div>
+      </div>
+      <div class="tbl-scroll" id="table-container"></div>
+    </div>
+
+  </div><!-- /right-panel -->
+</div><!-- /main -->
+
+<script>
+// ════════════════════════════════════════════════════════════════
+//  CONSTANTS — セグメント定義と表示設定
+// ════════════════════════════════════════════════════════════════
+
+// シミュレーション対象の3セグメント（配列の順番がUI/Chart描画順に影響）
+const SEGS = ['ent', 'mid', 'sb'];
+
+// セグメントごとの表示ラベルと配色
+const SEG_META = {
+  ent: { label: 'ENT', color: '#1f3864', colorA: 'rgba(31,56,100,0.65)'  },
+  mid: { label: 'MID', color: '#4472c4', colorA: 'rgba(68,114,196,0.65)' },
+  sb:  { label: 'SB',  color: '#70ad47', colorA: 'rgba(112,173,71,0.65)' },
+};
+
+// ════════════════════════════════════════════════════════════════
+//  DEFAULTS — セグメントごとの初期値
+//
+//  設計思想:
+//    ENT: 大口顧客 → 高ARPA・低採用数・高NRR
+//    MID: 中口顧客 → バランス型
+//    SB : 小口顧客 → 低ARPA・高採用数・低NRR（チャーン高め）
+//
+//  初期 ARR 合計: ENT 5 + MID 3 + SB 1 = 9億円
+// ════════════════════════════════════════════════════════════════
+const SEG_DEF = {
+  ent: {
+    beginningARR:  5,     // 億円
+    beginningCust: 10,    // 社
+    targetMRR:     50,    // 万円 / Rep / 月
+    rampPeriod:    6,     // ヶ月
+    yoyNRR:        120,   // %
+    contractionRate: 0.3, // % / 月
+    // 四半期ごとのデフォルト値（年 → Q あたりの値）
+    DEF_HIRE:   { 2024:2,2025:2,2026:3,2027:3,2028:4,2029:4,2030:5,2031:5,2032:6 },
+    DEF_CNEW:   { 2024:1,2025:2,2026:2,2027:3,2028:3,2029:4,2030:4,2031:5,2032:5 },
+    DEF_CCHURN: { 2024:0,2025:0,2026:0,2027:1,2028:1,2029:1,2030:1,2031:1,2032:2 },
+    DEF_RAMP:   { 1:0, 2:0.10, 3:0.40, 4:0.60, 5:0.80 },
+  },
+  mid: {
+    beginningARR:  3,
+    beginningCust: 10,
+    targetMRR:     10,
+    rampPeriod:    6,
+    yoyNRR:        115,
+    contractionRate: 0.5,
+    DEF_HIRE:   { 2024:3,2025:3,2026:5,2027:6,2028:8,2029:9,2030:11,2031:12,2032:14 },
+    DEF_CNEW:   { 2024:3,2025:4,2026:6,2027:8,2028:10,2029:12,2030:14,2031:16,2032:18 },
+    DEF_CCHURN: { 2024:1,2025:1,2026:1,2027:2,2028:2,2029:3,2030:3,2031:4,2032:4   },
+    DEF_RAMP:   { 1:0, 2:0.10, 3:0.40, 4:0.60, 5:0.80 },
+  },
+  sb: {
+    beginningARR:  1,
+    beginningCust: 10,
+    targetMRR:     5,
+    rampPeriod:    4,
+    yoyNRR:        105,
+    contractionRate: 1.0,
+    DEF_HIRE:   { 2024:4,2025:4,2026:6,2027:8,2028:10,2029:12,2030:14,2031:16,2032:18 },
+    DEF_CNEW:   { 2024:8,2025:9,2026:13,2027:16,2028:20,2029:23,2030:27,2031:30,2032:34 },
+    DEF_CCHURN: { 2024:2,2025:2,2026:3,2027:4,2028:4,2029:6,2030:6,2031:8,2032:8   },
+    DEF_RAMP:   { 1:0, 2:0.20, 3:0.60, 4:0.80 },
+  },
+};
+
+// ════════════════════════════════════════════════════════════════
+//  STATE — セグメントごとの入力状態
+//
+//  各グリッドは { "YYYY-Qn": 数値 } 形式で四半期ごとに管理
+// ════════════════════════════════════════════════════════════════
+const segState = {
+  ent: { hiringData: {}, custNewData: {}, custChurnData: {}, rampData: {} },
+  mid: { hiringData: {}, custNewData: {}, custChurnData: {}, rampData: {} },
+  sb:  { hiringData: {}, custNewData: {}, custChurnData: {}, rampData: {} },
+};
+
+// 左パネルのアクティブタブ
+let activeSegTab    = 'ent';
+// テーブルの表示対象（'total' / 'ent' / 'mid' / 'sb'）
+let activeTableView = 'total';
+// 最後のシミュレーション結果キャッシュ（テーブルビュー切替時に再シミュレーション不要）
+let lastSimResult   = null;
+
+// ════════════════════════════════════════════════════════════════
+//  HELPERS — DOM値取得 & 数値フォーマット
+// ════════════════════════════════════════════════════════════════
+
+const v  = id => parseFloat(document.getElementById(id)?.value) || 0;
+const vi = id => parseInt(document.getElementById(id)?.value)   || 0;
+
+/**
+ * 万円 → 百万円 に変換して表示文字列を返す
+ * @param {number} man  金額（万円単位）
+ * @param {number} dp   小数点以下桁数（0=整数, 1=1桁, デフォルト0）
+ */
+function fmtMM(man, dp = 0) {
+  if (isNaN(man) || man === undefined) return '—';
+  const mm = man / 100;
+  if (Math.round(mm * Math.pow(10, dp)) === 0) return '—';
+  return dp === 0
+    ? Math.round(mm).toLocaleString('en-US')
+    : mm.toFixed(dp);
+}
+
+/**
+ * KPI カード用の大きな数値表示（百万円 → 億・千億単位へ自動変換）
+ * 変換表:
+ *   ≥100,000百万円 (=1,000億) → 千億
+ *   ≥ 10,000百万円 (=  100億) → 百億
+ *   それ未満                  → 百万円 カンマ区切り
+ */
+function fmtKPI(man) {
+  if (isNaN(man)) return '—';
+  const mm = man / 100;
+  if (Math.abs(mm) >= 100000) return (mm / 100000).toFixed(1) + '千億';
+  if (Math.abs(mm) >= 10000)  return (mm / 10000).toFixed(1)  + '百億';
+  return Math.round(mm).toLocaleString('en-US');
+}
+
+/** パーセント表示フォーマッタ（p は既に % 単位） */
+function fmtPct(p, dp = 2) {
+  if (isNaN(p) || p === null) return '—';
+  return p.toFixed(dp) + '%';
+}
+
+// Y軸目盛りフォーマッタ（百万円単位の値を省略表示）
+// 100,000百万円 = 1,000億 = 千億 / 10,000百万円 = 100億 = 百億 / 1,000百万円 = 10億 = 十億
+const tickFmt = v => {
+  if (Math.abs(v) >= 100000) return (v / 100000).toFixed(1) + '千億';
+  if (Math.abs(v) >= 10000)  return (v / 10000).toFixed(1)  + '百億';
+  if (Math.abs(v) >= 1000)   return (v / 1000).toFixed(1)   + '十億';
+  return v.toLocaleString();
+};
+
+// ════════════════════════════════════════════════════════════════
+//  LEFT PANEL UI BUILDERS — セグメントパネルの生成
+// ════════════════════════════════════════════════════════════════
+
+/**
+ * 3セグメントの入力パネルHTMLを生成してDOMに挿入する
+ * HTML生成後に各スカラー入力のイベントリスナーも登録する
+ */
+function buildSegPanels() {
+  SEGS.forEach(seg => {
+    const d = SEG_DEF[seg];
+    // セグメントパネルのHTML全体を生成（セクション構成は全セグメント共通）
+    document.getElementById(`seg-panel-${seg}`).innerHTML = `
+      <div class="sec-hdr">初期設定</div>
+      <div class="inp-row">
+        <span class="lbl">初期 ARR（期初）</span><span class="unit">億円</span>
+        <input type="number" id="${seg}-beginningARR" value="${d.beginningARR}" min="0" step="1">
+      </div>
+      <div class="inp-row">
+        <span class="lbl">初期顧客数（期初）</span><span class="unit">社</span>
+        <input type="number" id="${seg}-beginningCustomers" value="${d.beginningCust}" min="0" step="1">
+      </div>
+
+      <div class="sec-hdr">New ARR — セールス生産性</div>
+      <div class="inp-row">
+        <span class="lbl">目標 MRR / Rep / 月</span><span class="unit">万円</span>
+        <input type="number" id="${seg}-targetMRR" value="${d.targetMRR}" min="0" step="10">
+      </div>
+      <div class="inp-row">
+        <span class="lbl">Ramp 期間</span><span class="unit">ヶ月</span>
+        <input type="number" id="${seg}-rampPeriod" value="${d.rampPeriod}" min="1" max="24" step="1">
+      </div>
+      <div class="subsec-hdr">Ramp 達成率（月別）</div>
+      <div class="ramp-wrap"><div id="${seg}-ramp-container"></div></div>
+
+      <div class="sec-hdr">既存顧客 — NRR</div>
+      <div class="inp-row">
+        <span class="lbl">YoY NRR</span><span class="unit">%</span>
+        <input type="number" id="${seg}-yoyNRR" value="${d.yoyNRR}" min="0" step="1">
+      </div>
+      <div class="inp-row">
+        <span class="lbl">月次 Contraction 率</span><span class="unit">%</span>
+        <input type="number" id="${seg}-contractionRate" value="${d.contractionRate}" min="0" max="100" step="0.1">
+      </div>
+      <div class="inp-row">
+        <span class="lbl" style="color:#888">　└ 月次 Expansion 率（導出）</span>
+        <span class="unit" style="color:#888">%</span>
+        <span class="derived" id="${seg}-derivedExpansion">—</span>
+      </div>
+
+      <div class="sec-hdr">顧客数（四半期）</div>
+      <div class="subsec-hdr">新規獲得顧客数（社 / Q）</div>
+      <div class="grid-wrap"><div id="${seg}-cust-new-table"></div></div>
+      <div class="subsec-hdr">解約顧客数（社 / Q）</div>
+      <div class="grid-wrap"><div id="${seg}-cust-churn-table"></div></div>
+
+      <div class="sec-hdr">採用計画（名 / Q）</div>
+      <div class="grid-wrap"><div id="${seg}-hiring-table"></div></div>
+    `;
+
+    // スカラー入力の変更を render() にバインド
+    [`${seg}-beginningARR`, `${seg}-beginningCustomers`,
+     `${seg}-targetMRR`, `${seg}-yoyNRR`, `${seg}-contractionRate`].forEach(id =>
+      document.getElementById(id).addEventListener('input', render)
+    );
+    // Ramp期間変更: Rampテーブルを再生成してから再計算
+    document.getElementById(`${seg}-rampPeriod`).addEventListener('input', () => {
+      buildRampTable(seg);
+      render();
+    });
+  });
+}
+
+/** アクティブなセグメントタブを切り替える */
+function switchSegTab(seg) {
+  activeSegTab = seg;
+  document.querySelectorAll('.seg-tab-btn').forEach(btn =>
+    btn.classList.toggle('active', btn.dataset.seg === seg)
+  );
+  SEGS.forEach(s =>
+    document.getElementById(`seg-panel-${s}`).classList.toggle('active', s === seg)
+  );
+}
+
+// ════════════════════════════════════════════════════════════════
+//  RAMP TABLE
+// ════════════════════════════════════════════════════════════════
+
+/** 指定セグメントのRamp達成率テーブルを再描画する */
+function buildRampTable(seg) {
+  const period   = vi(`${seg}-rampPeriod`) || 6;
+  const rampData = segState[seg].rampData;
+  const defRamp  = SEG_DEF[seg].DEF_RAMP;
+
+  let html = '<table class="ramp-table"><thead><tr><th>月目</th><th style="text-align:right">達成率 (%)</th></tr></thead><tbody>';
+  for (let m = 1; m <= period; m++) {
+    // 未登録月はデフォルト値で初期化（DEF_RAMP にない月は100%）
+    const def = defRamp[m] !== undefined ? defRamp[m] * 100 : 100;
+    if (!(m in rampData)) rampData[m] = def / 100;
+    html += `<tr>
+      <td class="ramp-month">${m} ヶ月目</td>
+      <td class="ramp-val"><input type="number" min="0" max="100" step="10"
+        value="${Math.round(rampData[m] * 100)}" data-seg="${seg}" data-m="${m}"
+        onchange="onRampChange(this)"></td>
+    </tr>`;
+  }
+  html += `<tr class="ramp-fixed"><td colspan="2">${period + 1}ヶ月目以降: 100%</td></tr>`;
+  html += '</tbody></table>';
+  document.getElementById(`${seg}-ramp-container`).innerHTML = html;
+}
+
+function onRampChange(el) {
+  segState[el.dataset.seg].rampData[+el.dataset.m] = (+el.value || 0) / 100;
+  render();
+}
+
+// ════════════════════════════════════════════════════════════════
+//  GRID TABLE（採用計画・新規顧客・解約顧客 共通）
+// ════════════════════════════════════════════════════════════════
+
+/**
+ * 指定セグメント × グリッド種別の入力テーブルを生成・挿入する
+ * @param {string} seg   'ent' | 'mid' | 'sb'
+ * @param {string} type  'hiring' | 'cust-new' | 'cust-churn'
+ */
+function buildGridTable(seg, type) {
+  // type に応じた状態オブジェクトとデフォルト値を取得
+  const storeKey = type === 'hiring'    ? 'hiringData'
+                 : type === 'cust-new'  ? 'custNewData'
+                 :                        'custChurnData';
+  const defKey   = type === 'hiring'    ? 'DEF_HIRE'
+                 : type === 'cust-new'  ? 'DEF_CNEW'
+                 :                        'DEF_CCHURN';
+
+  const store    = segState[seg][storeKey];
+  const defaults = SEG_DEF[seg][defKey];
+  const sy = vi('startYear'), ey = vi('endYear');
+  const containerId = `${seg}-${type}-table`;
+
+  // 表示範囲の全四半期キーをデフォルト値で初期化
+  for (let y = sy; y <= ey; y++)
+    for (let q = 1; q <= 4; q++) {
+      const k = `${y}-Q${q}`;
+      if (!(k in store)) store[k] = defaults[y] ?? 0;
+    }
+
+  // ヘッダー行1: FY年度
+  let html = '<table class="grid-table" style="width:auto"><thead><tr>';
+  for (let y = sy; y <= ey; y++)
+    html += `<th colspan="4" style="border-left:2px solid #9ec2de">FY${y}</th>`;
+  html += '</tr>';
+  // ヘッダー行2: Q1〜Q4 繰り返し
+  html += '<tr>';
+  for (let y = sy; y <= ey; y++)
+    for (let q = 1; q <= 4; q++)
+      html += `<th style="${q === 1 ? 'border-left:2px solid #9ec2de' : ''}">Q${q}</th>`;
+  html += '</tr></thead>';
+
+  // データ行（1行）
+  html += '<tbody><tr>';
+  for (let y = sy; y <= ey; y++)
+    for (let q = 1; q <= 4; q++) {
+      const k   = `${y}-Q${q}`;
+      const sep = q === 1 ? ' style="border-left:2px solid #9ec2de"' : '';
+      // data-seg / data-type でonGridChangeが対象ストアを特定できるようにする
+      html += `<td class="inp-cell"${sep}><input type="number" min="0" max="9999"
+        value="${store[k]}" data-seg="${seg}" data-type="${type}" data-key="${k}"
+        oninput="onGridChange(this)"></td>`;
+    }
+  html += '</tr></tbody></table>';
+  document.getElementById(containerId).innerHTML = html;
+}
+
+/** グリッド入力変更ハンドラ（data属性でセグメント・ストアを特定） */
+function onGridChange(el) {
+  const { seg, type, key } = el.dataset;
+  const storeKey = type === 'hiring'   ? 'hiringData'
+                 : type === 'cust-new' ? 'custNewData'
+                 :                       'custChurnData';
+  segState[seg][storeKey][key] = +el.value || 0;
+  render();
+}
+
+/** 指定セグメントの全グリッドを再構築する（年度範囲変更時に使用） */
+function buildAllGrids(seg) {
+  buildGridTable(seg, 'hiring');
+  buildGridTable(seg, 'cust-new');
+  buildGridTable(seg, 'cust-churn');
+}
+
+// ════════════════════════════════════════════════════════════════
+//  SIMULATION ENGINE — セグメント別 月次ループ
+// ════════════════════════════════════════════════════════════════
+
+/**
+ * 指定セグメントの月次 ARR シミュレーションを実行して結果配列を返す
+ * 計算ロジックは各セグメント独立（他セグメントの影響なし）
+ *
+ * @param {string} seg  'ent' | 'mid' | 'sb'
+ * @returns {Array}     月次結果オブジェクトの配列
+ */
+function simulateSeg(seg) {
+  const px = `${seg}-`;  // 入力フィールドIDのプレフィックス
+
+  // ── 入力値の読み取り ────────────────────────────────────────
+  const beginningARR       = v(px + 'beginningARR') * 10000;  // 億円 → 万円
+  const beginningCust      = vi(px + 'beginningCustomers');
+  const sy                 = vi('startYear');
+  const ey                 = vi('endYear');
+  const targetMRRperRep    = v(px + 'targetMRR');       // 万円 / Rep / 月
+  const rampPeriod         = vi(px + 'rampPeriod');
+  const yoyNRR             = v(px + 'yoyNRR') / 100;    // 1.xx
+  const monthlyContraction = v(px + 'contractionRate') / 100;
+
+  const { hiringData, custNewData, custChurnData, rampData } = segState[seg];
+
+  // ── Expansion 率の導出 ──────────────────────────────────────
+  // YoY NRR を月次換算: NRR_月 = NRR_年^(1/12) − 1
+  // Expansion 率 = NRR_月 + Contraction_月
+  const monthlyNet       = Math.pow(yoyNRR, 1 / 12) - 1;
+  const monthlyExpansion = monthlyNet + monthlyContraction;
+  document.getElementById(`${seg}-derivedExpansion`).textContent =
+    (monthlyExpansion * 100).toFixed(3) + '%';
+
+  // ── 月次ループ ──────────────────────────────────────────────
+  const totalMonths = (ey - sy + 1) * 12;
+  const results     = [];
+  let prevARR  = beginningARR;
+  let prevCust = beginningCust;
+
+  for (let i = 0; i < totalMonths; i++) {
+    const year  = sy + Math.floor(i / 12);
+    const month = (i % 12) + 1;
+    const qNum  = Math.ceil(month / 3);
+
+    // ── 実質稼働 HC の計算（全過去採用を Ramp 率付きで積算） ──
+    let effectiveHC = 0;
+    for (let j = 0; j <= i; j++) {
+      const hy     = sy + Math.floor(j / 12);
+      const hm     = (j % 12) + 1;
+      const hq     = Math.ceil(hm / 3);
+      const qHires = hiringData[`${hy}-Q${hq}`] || 0;
+      // 四半期採用を3ヶ月均等配分（端数はQ末に集約）
+      const mInQ   = ((hm - 1) % 3) + 1;
+      const base   = Math.floor(qHires / 3);
+      const hires  = mInQ < 3 ? base : qHires - base * 2;
+      if (!hires) continue;
+      const moj  = i - j;                              // 在職月数
+      const rate = moj < rampPeriod ? (rampData[moj + 1] ?? 1) : 1;
+      effectiveHC += hires * rate;
+    }
+
+    // ── ARR コンポーネント ─────────────────────────────────────
+    const newMRR         = effectiveHC * targetMRRperRep;
+    const newARR         = newMRR * 12;
+    const expansionARR   = prevARR * monthlyExpansion;  // アップセル・追加契約
+    const contractionARR = prevARR * monthlyContraction; // ダウングレード・一部解約
+    const netNewARR      = newARR + expansionARR - contractionARR;
+    const endARR         = prevARR + netNewARR;
+
+    // ── 顧客数の計算（四半期入力 → 月次配分） ────────────────
+    const mInQ    = ((month - 1) % 3) + 1;
+    const qNew    = custNewData[`${year}-Q${qNum}`]   || 0;
+    const qChurn  = custChurnData[`${year}-Q${qNum}`] || 0;
+    const baseN   = Math.floor(qNew   / 3);
+    const baseC   = Math.floor(qChurn / 3);
+    const newCust   = mInQ < 3 ? baseN : qNew   - baseN * 2;
+    const churnCust = mInQ < 3 ? baseC : qChurn - baseC * 2;
+    const endCust   = prevCust + newCust - churnCust;
+
+    // ── SaaS 指標 ──────────────────────────────────────────────
+    const arpa      = endCust > 0 ? endARR / endCust : 0;
+    const churnRate = prevARR > 0 ? contractionARR / prevARR * 100 : 0;
+    // NRR: (期初 + Expansion − Contraction) / 期初
+    const nrr       = prevARR > 0 ? (prevARR + expansionARR - contractionARR) / prevARR * 100 : 0;
+    // GRR: (期初 − Contraction) / 期初（Expansionを含まない純維持率）
+    const grr       = prevARR > 0 ? (prevARR - contractionARR) / prevARR * 100 : 0;
+
+    results.push({
+      year, month, qNum,
+      qLabel:      `${String(year).slice(2)} Q${qNum}`,
+      isQ1:        month === 1,
+      effectiveHC: Math.round(effectiveHC * 10) / 10,
+      newMRR:      Math.round(newMRR),
+      newARR:      Math.round(newARR),
+      expansionARR:   Math.round(expansionARR),
+      contractionARR: Math.round(contractionARR),
+      netNewARR:   Math.round(netNewARR),
+      beginningARR: Math.round(prevARR),
+      endARR:      Math.round(endARR),
+      newCust, churnCust, endCust,
+      arpa:      Math.round(arpa * 10) / 10,
+      churnRate, nrr, grr,
+    });
+
+    prevARR  = endARR;
+    prevCust = endCust;
+  }
+
+  return results;
+}
+
+/**
+ * 全3セグメントをシミュレーションし、月次の合計値（Total）を算出する
+ * Total の NRR/GRR/churnRate は合計 ARR ベースで正確に計算（単純平均ではない）
+ *
+ * @returns {{ segResults: Object, totalResults: Array }}
+ */
+function simulate() {
+  // 各セグメントを独立してシミュレーション
+  const segResults = {};
+  SEGS.forEach(seg => { segResults[seg] = simulateSeg(seg); });
+
+  const n            = segResults.ent.length;
+  const totalResults = [];
+
+  for (let i = 0; i < n; i++) {
+    const e = segResults.ent[i];
+    const m = segResults.mid[i];
+    const s = segResults.sb[i];
+
+    // フロー値: 単純合算
+    const totPrevARR        = e.beginningARR + m.beginningARR + s.beginningARR;
+    const totExpansionARR   = e.expansionARR  + m.expansionARR  + s.expansionARR;
+    const totContractionARR = e.contractionARR+ m.contractionARR+ s.contractionARR;
+    const totNewARR         = e.newARR         + m.newARR         + s.newARR;
+    const totNetNewARR      = e.netNewARR      + m.netNewARR      + s.netNewARR;
+    const totEndARR         = e.endARR         + m.endARR         + s.endARR;
+    const totEndCust        = e.endCust        + m.endCust        + s.endCust;
+
+    // 率指標: Total ARR ベースで正確に計算（セグメント平均ではなく加重計算）
+    const nrr       = totPrevARR > 0
+      ? (totPrevARR + totExpansionARR - totContractionARR) / totPrevARR * 100 : 0;
+    const grr       = totPrevARR > 0
+      ? (totPrevARR - totContractionARR) / totPrevARR * 100 : 0;
+    const churnRate = totPrevARR > 0
+      ? totContractionARR / totPrevARR * 100 : 0;
+    const arpa      = totEndCust > 0 ? totEndARR / totEndCust : 0;
+
+    totalResults.push({
+      year: e.year, month: e.month, qNum: e.qNum,
+      qLabel: e.qLabel, isQ1: e.isQ1,
+      effectiveHC:    e.effectiveHC + m.effectiveHC + s.effectiveHC,
+      newMRR:         e.newMRR      + m.newMRR      + s.newMRR,
+      newARR:         totNewARR,
+      expansionARR:   totExpansionARR,
+      contractionARR: totContractionARR,
+      netNewARR:      totNetNewARR,
+      beginningARR:   totPrevARR,
+      endARR:         totEndARR,
+      newCust:        e.newCust   + m.newCust   + s.newCust,
+      churnCust:      e.churnCust + m.churnCust + s.churnCust,
+      endCust:        totEndCust,
+      arpa:           Math.round(arpa * 10) / 10,
+      churnRate, nrr, grr,
+    });
+  }
+
+  return { segResults, totalResults };
+}
+
+// ════════════════════════════════════════════════════════════════
+//  QUARTERLY AGGREGATION — 月次 → 四半期集計
+// ════════════════════════════════════════════════════════════════
+
+/**
+ * 月次結果配列を3ヶ月ごとに集計して四半期サマリーを返す
+ * フロー指標: 3ヶ月合計 / ストック指標: 四半期末値 / 率指標: 3ヶ月平均
+ */
+function toQuarterly(results) {
+  const qs = [];
+  for (let i = 0; i < results.length; i += 3) {
+    const sl   = results.slice(i, Math.min(i + 3, results.length));
+    const last  = sl[sl.length - 1];
+    const first = sl[0];
+    const sum   = key => sl.reduce((s, r) => s + r[key], 0);
+    const avg   = key => sum(key) / sl.length;
+    qs.push({
+      label:   last.qLabel,
+      year:    last.year,
+      quarter: last.qNum,
+      isQ1:    last.qNum === 1,
+      beginningARR:   first.beginningARR,
+      newARR:         sum('newARR'),
+      expansionARR:   sum('expansionARR'),
+      contractionARR: sum('contractionARR'),
+      netNewARR:      sum('netNewARR'),
+      endARR:         last.endARR,
+      effectiveHC:    last.effectiveHC,
+      newMRR:         sum('newMRR'),
+      newCust:        sum('newCust'),
+      churnCust:      sum('churnCust'),
+      endCust:        last.endCust,
+      arpa:           last.arpa,
+      churnRate: avg('churnRate'),
+      nrr:       avg('nrr'),
+      grr:       avg('grr'),
+    });
+  }
+  return qs;
+}
+
+// ════════════════════════════════════════════════════════════════
+//  CHARTS
+// ════════════════════════════════════════════════════════════════
+let chartARR, chartNetNew;
+
+/**
+ * X/Y 軸の共通スケールオプションを生成する
+ * @param {Array}   qs       四半期データ（X軸ラベル判定用）
+ * @param {boolean} stacked  積み上げ表示の有無
+ */
+function makeScaleOpts(qs, stacked = false) {
+  return {
+    x: {
+      stacked,
+      grid: { display: false },
+      ticks: {
+        font: { size: 9 }, maxRotation: 45,
+        // FY開始四半期（Q1）のみ年度ラベルを表示
+        callback: (_, i) => {
+          const q = qs[i];
+          return (q && q.quarter === 1) ? `FY${q.year}` : null;
+        },
+      },
+    },
+    y: {
+      stacked,
+      grid: { color: '#f0f0f0' },
+      ticks: { font: { size: 9 }, callback: tickFmt },
+    },
+  };
+}
+
+/**
+ * 2本のチャートを描画する
+ * Chart 1: セグメント別 ARR 積み上げ棒グラフ（＋ Total 折れ線）
+ * Chart 2: セグメント別 Net New ARR 積み上げ棒グラフ
+ *
+ * @param {Object} segQs    { ent: [...], mid: [...], sb: [...] }
+ * @param {Array}  totalQs  集計済みの四半期データ
+ */
+function renderCharts(segQs, totalQs) {
+  const arrCtx = document.getElementById('chart-arr').getContext('2d');
+  const netCtx = document.getElementById('chart-netnew').getContext('2d');
+  if (chartARR)    chartARR.destroy();
+  if (chartNetNew) chartNetNew.destroy();
+
+  const labels = totalQs.map(q => q.label);
+  const toMM   = val => Math.round(val / 100);  // 万円 → 百万円
+
+  const legendOpts = {
+    position: 'bottom',
+    labels: { font: { size: 9, family: 'Arial' }, usePointStyle: true, boxWidth: 8 },
+  };
+  const tooltipOpts = {
+    callbacks: { label: c => ` ${c.dataset.label}: ${Math.abs(c.raw).toLocaleString()} 百万円` },
+  };
+
+  // ── Chart 1: ARR 推移（積み上げ棒 + Total 折れ線） ──────────
+  chartARR = new Chart(arrCtx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        // ENT / MID / SB を積み上げ棒で表示
+        ...SEGS.map(seg => ({
+          type: 'bar', label: SEG_META[seg].label,
+          data: segQs[seg].map(q => toMM(q.endARR)),
+          backgroundColor: SEG_META[seg].colorA,
+          borderColor: SEG_META[seg].color, borderWidth: 1, stack: 'arr',
+        })),
+        // Total を折れ線でオーバーレイ
+        {
+          type: 'line', label: 'Total',
+          data: totalQs.map(q => toMM(q.endARR)),
+          borderColor: '#333', backgroundColor: 'transparent',
+          borderWidth: 2, pointRadius: 2, tension: 0.2,
+          pointBackgroundColor: '#333',
+        },
+      ],
+    },
+    options: {
+      responsive: true, animation: false,
+      plugins: { legend: legendOpts, tooltip: tooltipOpts },
+      scales: makeScaleOpts(totalQs, true),
+    },
+  });
+
+  // ── Chart 2: Net New ARR（セグメント別積み上げ） ─────────────
+  // 正の Net New はセグメント別に積み上げ、
+  // 各セグメントが Total Net New にどれだけ寄与しているかが一目でわかる
+  chartNetNew = new Chart(netCtx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: SEGS.map(seg => ({
+        label: `${SEG_META[seg].label} Net New`,
+        data: segQs[seg].map(q => toMM(q.netNewARR)),
+        backgroundColor: SEG_META[seg].colorA,
+        borderColor: SEG_META[seg].color, borderWidth: 1, stack: 's',
+      })),
+    },
+    options: {
+      responsive: true, animation: false,
+      plugins: { legend: legendOpts, tooltip: tooltipOpts },
+      scales: makeScaleOpts(totalQs, true),
+    },
+  });
+}
+
+// ════════════════════════════════════════════════════════════════
+//  TABLE — 転置四半期テーブル（指標=行, 四半期=列）
+// ════════════════════════════════════════════════════════════════
+
+/** テーブルの表示対象を切り替える（再シミュレーションなし） */
+function switchTableView(view) {
+  activeTableView = view;
+  document.querySelectorAll('.view-tab-btn').forEach(btn =>
+    btn.classList.toggle('active', btn.dataset.view === view)
+  );
+  if (lastSimResult) {
+    renderTable(lastSimResult.segQs, lastSimResult.totalQs);
+  }
+}
+
+/**
+ * 四半期サマリーテーブルを描画する
+ * activeTableView に応じて Total or セグメント別データを表示する
+ */
+function renderTable(segQs, totalQs) {
+  const qs = activeTableView === 'total' ? totalQs : segQs[activeTableView];
+  if (!qs || !qs.length) return;
+
+  // FY 年グループの集計（colspan 計算用）
+  const fyGroups = [];
+  let curYear = null, span = 0;
+  qs.forEach(q => {
+    if (q.year !== curYear) {
+      if (curYear !== null) fyGroups.push({ year: curYear, span });
+      curYear = q.year; span = 1;
+    } else { span++; }
+  });
+  fyGroups.push({ year: curYear, span });
+
+  // ── ヘッダー ─────────────────────────────────────────────────
+  let html = '<table class="data-table"><thead>';
+  html += '<tr class="hdr-fy"><th class="metric-th" rowspan="2">項目</th><th class="unit-th" rowspan="2">単位</th>';
+  html += fyGroups.map(g => `<th colspan="${g.span}">FY${g.year}</th>`).join('');
+  html += '</tr><tr class="hdr-q">';
+  qs.forEach(q => {
+    html += `<th${q.isQ1 ? ' class="q1-col"' : ''}>Q${q.quarter}</th>`;
+  });
+  html += '</tr></thead><tbody>';
+
+  // ── 行定義（宣言的に管理） ────────────────────────────────────
+  const rows = [
+    { type: 'sec', label: 'ARR Bridge' },
+    { key: 'beginningARR',   label: '期初 ARR',           unit: '百万円', fmt: q => fmtMM(q.beginningARR),                cls: '' },
+    { key: 'newARR',         label: '　└ New ARR',         unit: '百万円', fmt: q => fmtMM(q.newARR),                      cls: 'row-indent pos' },
+    { key: 'expansionARR',   label: '　└ Expansion ARR',   unit: '百万円', fmt: q => fmtMM(q.expansionARR),                cls: 'row-indent pos' },
+    { key: 'contractionARR', label: '　└ Contraction ARR', unit: '百万円', fmt: q => `(${fmtMM(q.contractionARR)})`,       cls: 'row-indent neg' },
+    { key: 'netNewARR',      label: 'Net New ARR',         unit: '百万円', fmt: q => fmtMM(q.netNewARR),                   cls: 'row-subtotal' },
+    { key: 'endARR',         label: '期末 ARR',            unit: '百万円', fmt: q => fmtMM(q.endARR),                      cls: 'row-total' },
+    { type: 'spacer' },
+    { type: 'sec', label: '顧客数・ARPA' },
+    { key: 'newCust',   label: '　└ 新規獲得', unit: '社',   fmt: q => q.newCust.toLocaleString(),          cls: 'row-indent pos' },
+    { key: 'churnCust', label: '　└ 解約',     unit: '社',   fmt: q => `(${q.churnCust.toLocaleString()})`, cls: 'row-indent neg' },
+    { key: 'endCust',   label: '顧客数合計',   unit: '社',   fmt: q => q.endCust.toLocaleString(),          cls: 'row-subtotal' },
+    { key: 'arpa',      label: 'ARPA',         unit: '百万円', fmt: q => fmtMM(q.arpa, 1),                  cls: '' },
+    { type: 'spacer' },
+    { type: 'sec', label: '成長効率指標' },
+    { key: 'churnRate', label: 'Churn Rate', unit: '%', fmt: q => fmtPct(q.churnRate), cls: 'pct-warn' },
+    { key: 'nrr',       label: 'NRR',        unit: '%', fmt: q => fmtPct(q.nrr),       cls: 'pct-good' },
+    { key: 'grr',       label: 'GRR',        unit: '%', fmt: q => fmtPct(q.grr),       cls: 'pct-good' },
+    { type: 'spacer' },
+    { type: 'sec', label: 'セールス活動' },
+    { key: 'effectiveHC', label: '実質稼働 HC',   unit: '名',   fmt: q => q.effectiveHC.toFixed(1), cls: '' },
+    { key: 'newMRR',      label: 'New MRR（累計）', unit: '百万円', fmt: q => fmtMM(q.newMRR),         cls: '' },
+  ];
+
+  rows.forEach(row => {
+    if (row.type === 'spacer') {
+      html += `<tr class="row-spacer"><td class="metric-cell"></td><td class="unit-cell"></td>${qs.map(() => '<td></td>').join('')}</tr>`;
+      return;
+    }
+    if (row.type === 'sec') {
+      html += `<tr class="row-sec-hdr"><td class="metric-cell" colspan="${2 + qs.length}">${row.label}</td></tr>`;
+      return;
+    }
+    const isTotal    = row.cls.includes('row-total');
+    const isSubtotal = row.cls.includes('row-subtotal');
+    const rowCls     = isTotal ? 'row-total' : isSubtotal ? 'row-subtotal'
+                     : row.cls.includes('row-indent') ? 'row-indent' : '';
+    const valCls     = row.cls.includes('pos')      ? 'pos'
+                     : row.cls.includes('neg')      ? 'neg'
+                     : row.cls.includes('pct-good') ? 'pct-good'
+                     : row.cls.includes('pct-warn') ? 'pct-warn' : '';
+    html += `<tr class="${rowCls}">`;
+    html += `<td class="metric-cell">${row.label}</td>`;
+    html += `<td class="unit-cell">${row.unit}</td>`;
+    qs.forEach(q => {
+      const qcls = [valCls, q.isQ1 ? 'q1-col' : ''].filter(Boolean).join(' ');
+      html += `<td class="${qcls}">${row.fmt(q)}</td>`;
+    });
+    html += '</tr>';
+  });
+
+  html += '</tbody></table>';
+  document.getElementById('table-container').innerHTML = html;
+}
+
+// ════════════════════════════════════════════════════════════════
+//  KPIs — サマリーカードの更新
+// ════════════════════════════════════════════════════════════════
+
+/**
+ * KPIカードを更新する
+ * 行1: Total ARR / 累計 New ARR / 期末 HC / CAGR
+ * 行2: セグメント別 期末 ARR（シェア付き）/ Total NRR
+ *
+ * CAGR = (期末ARR / 期初ARR)^(1/年数) − 1
+ */
+function renderKPIs(totalResults, segQs) {
+  const last     = totalResults[totalResults.length - 1];
+  const first    = totalResults[0];
+  const totalNew = totalResults.reduce((s, r) => s + r.newARR, 0);
+  const years    = vi('endYear') - vi('startYear') + 1;
+  const cagr     = Math.pow(last.endARR / first.beginningARR, 1 / years) - 1;
+
+  // 行1: Total
+  document.getElementById('kpi-end-arr').textContent     = fmtKPI(last.endARR);
+  document.getElementById('kpi-end-arr-sub').textContent = `百万円 / ${last.year}年${last.month}月末`;
+  document.getElementById('kpi-new-arr').textContent     = fmtKPI(totalNew);
+  document.getElementById('kpi-hc').textContent          = last.effectiveHC.toFixed(1) + '名';
+  document.getElementById('kpi-cagr').textContent        = (cagr * 100).toFixed(1) + '%';
+  document.getElementById('kpi-cagr-sub').textContent    = `${vi('startYear')}→${vi('endYear')}`;
+  document.getElementById('kpi-nrr').textContent         = fmtPct(last.nrr);
+
+  // 行2: セグメント別 期末ARR + シェア
+  SEGS.forEach(seg => {
+    const segLast = segQs[seg][segQs[seg].length - 1];
+    const share   = last.endARR > 0
+      ? Math.round(segLast.endARR / last.endARR * 100) : 0;
+    document.getElementById(`kpi-${seg}-arr`).textContent   = fmtKPI(segLast.endARR);
+    document.getElementById(`kpi-${seg}-share`).textContent = `百万円 (Total比 ${share}%)`;
+  });
+}
+
+// ════════════════════════════════════════════════════════════════
+//  MASTER RENDER
+// ════════════════════════════════════════════════════════════════
+
+function render() {
+  const { segResults, totalResults } = simulate();
+
+  // 月次 → 四半期集計
+  const segQs   = {};
+  SEGS.forEach(seg => { segQs[seg] = toQuarterly(segResults[seg]); });
+  const totalQs = toQuarterly(totalResults);
+
+  // 結果をキャッシュ（テーブルビュー切替で再シミュ不要にする）
+  lastSimResult = { segQs, totalQs };
+
+  renderCharts(segQs, totalQs);
+  renderTable(segQs, totalQs);
+  renderKPIs(totalResults, segQs);
+  document.getElementById('stamp').textContent = '更新: ' + new Date().toLocaleTimeString('ja-JP');
+}
+
+// ════════════════════════════════════════════════════════════════
+//  EVENT WIRING
+// ════════════════════════════════════════════════════════════════
+
+// 年度レンジ変更: 全セグメントのグリッドを再生成してから再計算
+['startYear', 'endYear'].forEach(id =>
+  document.getElementById(id).addEventListener('change', () => {
+    SEGS.forEach(seg => buildAllGrids(seg));
+    render();
+  })
+);
+
+// ════════════════════════════════════════════════════════════════
+//  INIT — 初回ページ読み込み時
+// ════════════════════════════════════════════════════════════════
+
+// セグメントパネルのHTML生成 → イベントリスナー登録
+buildSegPanels();
+
+// 各セグメントの Ramp テーブルとグリッドを初期描画
+SEGS.forEach(seg => {
+  buildRampTable(seg);
+  buildAllGrids(seg);
+});
+
+// 初回シミュレーション・描画
+render();
+</script>
+</body>
+</html>
